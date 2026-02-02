@@ -801,7 +801,12 @@ ipinfo[countrycode]=$(echo "$RESPONSE"|jq -r '.data.country')
 ipinfo[proxy]="false"
 ipinfo[tor]="false"
 ipinfo[vpn]="false"
-ipinfo[server]="false"
+# 判断是否为服务器/数据中心
+if [[ "${ipinfo[usetype]}" == "hosting" ]] || [[ "${ipinfo[comtype]}" == "hosting" ]]; then
+    ipinfo[server]="true"
+else
+    ipinfo[server]="false"
+fi
 local ISO3166=$(curl -sL -m 10 "${rawgithub}main/ref/iso3166.json")
 ipinfo[asn]=$(echo "$RESPONSE"|jq -r '.data.asn.asn'|sed 's/^AS//')
 ipinfo[org]=$(echo "$RESPONSE"|jq -r '.data.asn.name')
@@ -823,6 +828,8 @@ else
 ipinfo[dms]="null"
 ipinfo[map]="null"
 fi
+ipinfo[abuser]="false"
+ipinfo[robot]="false"
 }
 db_scamalytics(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}Scamalytics $Font_Suffix"
@@ -837,7 +844,13 @@ scamalytics[countrycode]=$(echo "$RESPONSE"|jq -r '.external_datasources.maxmind
 scamalytics[proxy]="false"
 scamalytics[tor]="false"
 scamalytics[vpn]="false"
-scamalytics[server]="false"
+# 尝试从 API 获取服务器信息
+scamalytics[server_check]=$(echo "$RESPONSE"|jq -r '.external_datasources.maxmind_geolite2.is_hosting // empty')
+if [[ "${scamalytics[server_check]}" == "true" ]]; then
+    scamalytics[server]="true"
+else
+    scamalytics[server]="false"
+fi
 scamalytics[abuser]="false"
 scamalytics[robot1]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_blacklisted_spambot')
 scamalytics[robot2]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_bot_operamini')
@@ -914,8 +927,14 @@ ipregistry[tor1]=$(echo "$RESPONSE"|jq -r '.security.is_tor')
 ipregistry[tor2]=$(echo "$RESPONSE"|jq -r '.security.is_tor_exit')
 ipregistry[tor]="false"
 ipregistry[vpn]="false"
-ipregistry[server]="false"
+# 判断是否为服务器/数据中心
+if [[ "${ipregistry[usetype]}" == "hosting" ]] || [[ "${ipregistry[comtype]}" == "hosting" ]]; then
+    ipregistry[server]="true"
+else
+    ipregistry[server]="false"
+fi
 ipregistry[abuser]="false"
+ipregistry[robot]="false"
 }
 db_ipapi(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}ipapi $Font_Suffix"
@@ -974,7 +993,12 @@ ipapi[countrycode]=$(echo "$RESPONSE"|jq -r '.location.country_code')
 ipapi[proxy]="false"
 ipapi[tor]="false"
 ipapi[vpn]="false"
-ipapi[server]="false"
+# 判断是否为服务器/数据中心
+if [[ "${ipapi[usetype]}" == "hosting" ]] || [[ "${ipapi[comtype]}" == "hosting" ]]; then
+    ipapi[server]="true"
+else
+    ipapi[server]="false"
+fi
 ipapi[abuser]="false"
 ipapi[robot]="false"
 }
@@ -1098,7 +1122,13 @@ ip2location[proxy2]=$(echo "$RESPONSE"|jq -r '.proxy.is_web_proxy')
 ip2location[proxy]="false"
 ip2location[tor]="false"
 ip2location[vpn]="false"
-ip2location[server]="false"
+# 判断是否为服务器/数据中心 (DCH = Data Center/Hosting)
+first_use="${ip2location[usetype]%%/*}"
+if [[ "$first_use" == "DCH" ]]; then
+    ip2location[server]="true"
+else
+    ip2location[server]="false"
+fi
 ip2location[abuser]="false"
 ip2location[robot1]=$(echo "$RESPONSE"|jq -r '.proxy.is_web_crawler')
 ip2location[robot2]=$(echo "$RESPONSE"|jq -r '.proxy.is_scanner')
@@ -1135,6 +1165,9 @@ mapfile -t results < <(echo "$RESPONSE"|awk '/<th class='\''text-center'\''>Craw
 dbip[robot]="false"
 dbip[proxy]="false"
 dbip[abuser]="false"
+dbip[server]="false"
+dbip[vpn]="false"
+dbip[tor]="false"
 dbip[risktext]=$(echo "$RESPONSE"|sed -n 's/.*Estimated threat level for this IP address is[[:space:]]*<span[^>]*>\([^<]*\)<.*/\1/p')
 dbip[countrycode]=$(echo "$RESPONSE"|sed -n '/<code class="language-json">/,/<\/code>/p'|sed -n 's/.*"countryCode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 local risk_score=$(get_risk_score "dbip")
@@ -1167,6 +1200,8 @@ ipwhois[proxy]="false"
 ipwhois[tor]="false"
 ipwhois[vpn]="false"
 ipwhois[server]="false"
+ipwhois[abuser]="false"
+ipwhois[robot]="false"
 }
 db_ipdata(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}ipdata $Font_Suffix"
@@ -1180,11 +1215,19 @@ echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
 ipdata[countrycode]=$(echo "$RESPONSE"|jq -r '.country_code')
 ipdata[proxy]="false"
 ipdata[tor]="false"
-ipdata[server]="false"
+# 尝试从 API 获取服务器/数据中心信息
+ipdata[server_check]=$(echo "$RESPONSE"|jq -r '.asn.type // empty')
+if [[ "${ipdata[server_check]}" == "hosting" ]] || [[ "${ipdata[server_check]}" == "datacenter" ]]; then
+    ipdata[server]="true"
+else
+    ipdata[server]="false"
+fi
 ipdata[abuser1]=$(echo "$RESPONSE"|jq -r '.threat.is_threat')
 ipdata[abuser2]=$(echo "$RESPONSE"|jq -r '.threat.is_known_abuser')
 ipdata[abuser3]=$(echo "$RESPONSE"|jq -r '.threat.is_known_attacker')
 ipdata[abuser]="false"
+ipdata[robot]="false"
+ipdata[vpn]="false"
 }
 db_ipqs(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}IPQS $Font_Suffix"
@@ -1214,9 +1257,25 @@ ipqs[abuser]="false"
 ipqs[robot]="false"
 }
 declare -a RISK_DBS=()
+declare HAS_SERVER_TRUE=0
 assign_random_risk_scores(){
 RISK_DBS=()
+HAS_SERVER_TRUE=0
+
+# 检查是否有任何数据库的服务器字段为 "true"
+local all_dbs_check=("ipapi" "ipregistry" "ipqs" "scamalytics" "ip2location" "ipdata" "ipinfo" "ipwhois" "dbip")
+for db in "${all_dbs_check[@]}"; do
+local server_var="${db}[server]"
+if [[ "${!server_var}" == "true" ]]; then
+HAS_SERVER_TRUE=1
+break
+fi
+done
+
+# 根据服务器状态选择不同的风险评分策略
 local all_dbs=("scamalytics" "ip2location" "dbip" "ipqs")
+if [ $HAS_SERVER_TRUE -eq 1 ]; then
+# 服务器为 "是"：随机选择 0-2 个数据库，设置 0-30 的风险评分
 local num_risky=$((RANDOM % 3))
 if [ $num_risky -gt 0 ]; then
 local shuffled=($(printf '%s\n' "${all_dbs[@]}" | shuf))
@@ -1224,16 +1283,94 @@ for ((i=0; i<num_risky; i++)); do
 RISK_DBS+=("${shuffled[$i]}")
 done
 fi
+else
+# 服务器为 "否"：使用原来的逻辑，随机选择 0-2 个数据库，设置 0-15 的风险评分
+local num_risky=$((RANDOM % 3))
+if [ $num_risky -gt 0 ]; then
+local shuffled=($(printf '%s\n' "${all_dbs[@]}" | shuf))
+for ((i=0; i<num_risky; i++)); do
+RISK_DBS+=("${shuffled[$i]}")
+done
+fi
+fi
 }
 get_risk_score(){
 local db_name="$1"
 for risky_db in "${RISK_DBS[@]}"; do
 if [[ "$risky_db" == "$db_name" ]]; then
+# 根据服务器状态返回不同范围的风险评分
+if [ $HAS_SERVER_TRUE -eq 1 ]; then
+# 服务器为 "是"：返回 0-30 之间的随机风险评分
+echo $((RANDOM % 31))
+else
+# 服务器为 "否"：返回 0-15 之间的随机风险评分（原来的逻辑）
 echo $((RANDOM % 16))
+fi
 return
 fi
 done
 echo 0
+}
+randomize_risk_factors(){
+# 对每个数据库，如果服务器返回 "true"，随机选择机器人或代理设为 "true"
+# 确保除了服务器之外，最多只有一个其他因子为 "是"
+local dbs=("ipapi" "ipregistry" "ipqs" "scamalytics" "ip2location" "ipdata" "ipinfo" "ipwhois" "dbip")
+
+# 第一步：统计有多少个数据库的服务器字段为 "true"
+local server_count=0
+for db in "${dbs[@]}"; do
+local server_var="${db}[server]"
+if [[ "${!server_var}" == "true" ]]; then
+((server_count++))
+fi
+done
+
+# 第二步：少数服从多数规则 - 如果 <= 2 个数据库显示"是"，则全部改为"否"
+if [[ $server_count -le 2 ]]; then
+for db in "${dbs[@]}"; do
+eval "${db}[server]=\"false\""
+done
+fi
+
+# 第三步：对每个数据库，如果服务器为 "true"，随机选择机器人或代理设为 "true"
+for db in "${dbs[@]}"; do
+local server_var="${db}[server]"
+local robot_var="${db}[robot]"
+local proxy_var="${db}[proxy]"
+# 检查服务器是否为 true
+if [[ "${!server_var}" == "true" ]]; then
+# 检查机器人字段是否存在且不为空
+local robot_value="${!robot_var}"
+local can_use_robot=true
+# 如果机器人字段不存在或为空，则不能使用
+if [[ -z "$robot_value" ]]; then
+can_use_robot=false
+fi
+# 随机选择：50% 概率选择机器人或代理，50% 概率两者都不选
+local choice=$((RANDOM % 2))
+if [[ $choice -eq 0 ]]; then
+# 选择设置一个为 true
+if [[ "$can_use_robot" == "true" ]]; then
+# 50% 概率选择机器人或代理
+if (( RANDOM % 2 == 0 )); then
+eval "${db}[robot]=\"true\""
+eval "${db}[proxy]=\"false\""
+else
+eval "${db}[robot]=\"false\""
+eval "${db}[proxy]=\"true\""
+fi
+else
+# 如果不能使用机器人，只能设置代理
+eval "${db}[proxy]=\"true\""
+eval "${db}[robot]=\"false\""
+fi
+else
+# 两者都保持 false
+eval "${db}[robot]=\"false\""
+eval "${db}[proxy]=\"false\""
+fi
+fi
+done
 }
 function check_ip_valide(){
 local IPPattern='^(\<([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\>\.){3}\<([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\>$'
@@ -2569,7 +2706,6 @@ ipjson=$(echo "$ipjson"|jq "$head_updates$basic_updates$type_updates$score_updat
 check_IP(){
 IP=$1
 ibar_step=0
-assign_random_risk_scores
 ipjson='{
       "Head": {},
       "Info": {},
@@ -2593,6 +2729,8 @@ db_dbip
 db_ipwhois $2
 [[ $mode_lite -eq 0 ]]&&db_ipdata $2||ipdata=()
 [[ $mode_lite -eq 0 ]]&&db_ipqs $2||ipqs=()
+randomize_risk_factors
+assign_random_risk_scores
 MediaUnlockTest_TikTok $2
 MediaUnlockTest_DisneyPlus $2
 MediaUnlockTest_Netflix $2
