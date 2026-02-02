@@ -1332,41 +1332,19 @@ eval "${db}[server]=\"false\""
 done
 fi
 
-# 第三步：对每个数据库，如果服务器为 "true"，随机选择机器人或代理设为 "true"
+# 第三步：对每个数据库，如果服务器为 "true"，随机选择是否设置代理为 "true"
 for db in "${dbs[@]}"; do
 local server_var="${db}[server]"
 local robot_var="${db}[robot]"
 local proxy_var="${db}[proxy]"
 # 检查服务器是否为 true
 if [[ "${!server_var}" == "true" ]]; then
-# 检查机器人字段是否存在且不为空
-local robot_value="${!robot_var}"
-local can_use_robot=true
-# 如果机器人字段不存在或为空，则不能使用
-if [[ -z "$robot_value" ]]; then
-can_use_robot=false
-fi
-# 随机选择：50% 概率选择机器人或代理，50% 概率两者都不选
-local choice=$((RANDOM % 2))
-if [[ $choice -eq 0 ]]; then
-# 选择设置一个为 true
-if [[ "$can_use_robot" == "true" ]]; then
-# 50% 概率选择机器人或代理
+# 机器人永远设置为 false
+eval "${db}[robot]=\"false\""
+# 随机决定代理是否为 true（50% 概率）
 if (( RANDOM % 2 == 0 )); then
-eval "${db}[robot]=\"true\""
-eval "${db}[proxy]=\"false\""
-else
-eval "${db}[robot]=\"false\""
 eval "${db}[proxy]=\"true\""
-fi
 else
-# 如果不能使用机器人，只能设置代理
-eval "${db}[proxy]=\"true\""
-eval "${db}[robot]=\"false\""
-fi
-else
-# 两者都保持 false
-eval "${db}[robot]=\"false\""
 eval "${db}[proxy]=\"false\""
 fi
 fi
