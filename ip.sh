@@ -1,5 +1,5 @@
 #!/bin/bash
-script_version="v2026-01-25"
+script_version="v2026-03-13"
 check_bash(){
 current_bash_version=$(bash --version|head -n 1|awk -F ' ' '{for (i=1; i<=NF; i++) if ($i ~ /^[0-9]+\.[0-9]+\.[0-9]+/) {print $i; exit}}'|cut -d . -f 1)
 if [ "$current_bash_version" = "0" ]||[ "$current_bash_version" = "1" ]||[ "$current_bash_version" = "2" ]||[ "$current_bash_version" = "3" ];then
@@ -47,7 +47,6 @@ declare -A ipapi
 declare -A abuseipdb
 declare -A ip2location
 declare -A dbip
-declare -A ipwhois
 declare -A ipdata
 declare -A ipqs
 declare -A tiktok
@@ -496,8 +495,8 @@ $usesudo $install_command jq curl bc netcat bind-utils iproute2
 esac
 }
 declare -A browsers=(
-[Chrome]="139.0.7258.128 139.0.7258.67 138.0.7204.185 138.0.7204.170 138.0.7204.159 138.0.7204.102 138.0.7204.100 138.0.7204.51 138.0.7204.49 137.0.7151.122 138.0.7204.35 137.0.7151.121 137.0.7151.105 137.0.7151.104 137.0.7151.57 137.0.7151.55 136.0.7103.116 137.0.7151.40 136.0.7103.113 136.0.7103.92 135.0.7049.117 136.0.7103.48 135.0.7049.114 135.0.7049.86 135.0.7049.42 135.0.7049.41 134.0.6998.167 134.0.6998.119 134.0.6998.117 134.0.6998.37 134.0.6998.35 133.0.6943.128 133.0.6943.100 133.0.6943.59 133.0.6943.53 132.0.6834.162 133.0.6943.35 132.0.6834.160 132.0.6834.112 132.0.6834.110 131.0.6778.267 132.0.6834.83 131.0.6778.264 131.0.6778.204 131.0.6778.139 131.0.6778.109 131.0.6778.71 131.0.6778.69 130.0.6723.119 131.0.6778.33 130.0.6723.116 130.0.6723.71 130.0.6723.60 130.0.6723.58 129.0.6668.103 130.0.6723.44 129.0.6668.100 129.0.6668.72 129.0.6668.60 129.0.6668.42 128.0.6613.122 128.0.6613.121 128.0.6613.115 128.0.6613.113 127.0.6533.122 128.0.6613.36 127.0.6533.119 127.0.6533.100 127.0.6533.74 127.0.6533.72 126.0.6478.185 127.0.6533.57 126.0.6478.183 126.0.6478.128 126.0.6478.116 126.0.6478.114 126.0.6478.61 125.0.6422.176 126.0.6478.56 125.0.6422.144 126.0.6478.36 125.0.6422.142 125.0.6422.114 125.0.6422.77 125.0.6422.76 124.0.6367.210 125.0.6422.60 124.0.6367.208 124.0.6367.201 124.0.6367.156 125.0.6422.41 124.0.6367.155 124.0.6367.119 124.0.6367.92 124.0.6367.63 124.0.6367.61 123.0.6312.124 124.0.6367.60 123.0.6312.122 123.0.6312.106 123.0.6312.105 123.0.6312.60 123.0.6312.58 122.0.6261.131 123.0.6312.46 122.0.6261.129 122.0.6261.128 122.0.6261.112 122.0.6261.111 122.0.6261.71 122.0.6261.69 121.0.6167.189 122.0.6261.57 121.0.6167.187 121.0.6167.186 121.0.6167.162 121.0.6167.160 121.0.6167.140 121.0.6167.86 121.0.6167.85 120.0.6099.227 120.0.6099.225 121.0.6167.75 120.0.6099.224 120.0.6099.218 120.0.6099.216 120.0.6099.200 120.0.6099.199 120.0.6099.129 120.0.6099.110 120.0.6099.109 120.0.6099.62 120.0.6099.56"
-[Firefox]="132.0 131.0 130.0 129.0 128.0 127.0 126.0 125.0 124.0 123.0 122.0 121.0 120.0")
+[Chrome]="145.0.0.0 144.0.0.0 143.0.0.0 142.0.0.0 141.0.0.0 140.0.0.0"
+[Firefox]="147.0 146.0 145.0 144.0 143.0 142.0 141.0 140.0")
 generate_random_user_agent(){
 local browsers_keys=(${!browsers[@]})
 local random_browser_index=$((RANDOM%${#browsers_keys[@]}))
@@ -798,15 +797,10 @@ case ${ipinfo[comtype]} in
 esac
 shopt -u nocasematch
 ipinfo[countrycode]=$(echo "$RESPONSE"|jq -r '.data.country')
-ipinfo[proxy]="false"
-ipinfo[tor]="false"
-ipinfo[vpn]="false"
-# 判断是否为服务器/数据中心
-if [[ "${ipinfo[usetype]}" == "hosting" ]] || [[ "${ipinfo[comtype]}" == "hosting" ]]; then
-    ipinfo[server]="true"
-else
-    ipinfo[server]="false"
-fi
+ipinfo[proxy]=$(echo "$RESPONSE"|jq -r '.data.privacy.proxy')
+ipinfo[tor]=$(echo "$RESPONSE"|jq -r '.data.privacy.tor')
+ipinfo[vpn]=$(echo "$RESPONSE"|jq -r '.data.privacy.vpn')
+ipinfo[server]=$(echo "$RESPONSE"|jq -r '.data.privacy.hosting')
 local ISO3166=$(curl -sL -m 10 "${rawgithub}main/ref/iso3166.json")
 ipinfo[asn]=$(echo "$RESPONSE"|jq -r '.data.asn.asn'|sed 's/^AS//')
 ipinfo[org]=$(echo "$RESPONSE"|jq -r '.data.asn.name')
@@ -841,30 +835,24 @@ scamalytics=()
 local RESPONSE=$(curl $CurlARG -sL -$1 -m 10 "https://ipinfo.check.place/$IP?db=scamalytics")
 echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
 scamalytics[countrycode]=$(echo "$RESPONSE"|jq -r '.external_datasources.maxmind_geolite2.ip_country_code')
-scamalytics[proxy]="false"
-scamalytics[tor]="false"
-scamalytics[vpn]="false"
-# 尝试从 API 获取服务器信息
-scamalytics[server_check]=$(echo "$RESPONSE"|jq -r '.external_datasources.maxmind_geolite2.is_hosting // empty')
-if [[ "${scamalytics[server_check]}" == "true" ]]; then
-    scamalytics[server]="true"
-else
-    scamalytics[server]="false"
-fi
-scamalytics[abuser]="false"
+scamalytics[proxy]=$(echo "$RESPONSE"|jq -r '.external_datasources.firehol.is_proxy')
+scamalytics[tor]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_tor')
+scamalytics[vpn]=$(echo "$RESPONSE"|jq -r '.scamalytics.scamalytics_proxy.is_vpn')
+scamalytics[server]=$(echo "$RESPONSE"|jq -r '.scamalytics.scamalytics_proxy.is_datacenter')
+scamalytics[abuser]=$(echo "$RESPONSE"|jq -r '.scamalytics.is_blacklisted_external')
 scamalytics[robot1]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_blacklisted_spambot')
 scamalytics[robot2]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_bot_operamini')
 scamalytics[robot3]=$(echo "$RESPONSE"|jq -r '.external_datasources.x4bnet.is_bot_semrush')
-scamalytics[robot]="false"
-local risk_score=$(get_risk_score "scamalytics")
-scamalytics[score]=$risk_score
-if [[ $risk_score -lt 20 ]];then
+[[ ${scamalytics[robot1]} == "true" || ${scamalytics[robot2]} == "true" || ${scamalytics[robot3]} == "true" ]]&&scamalytics[robot]="true"
+[[ ${scamalytics[robot1]} == "false" && ${scamalytics[robot2]} == "false" && ${scamalytics[robot3]} == "false" ]]&&scamalytics[robot]="false"
+scamalytics[score]=$(echo "$RESPONSE"|jq -r '.scamalytics.scamalytics_score')
+if [[ ${scamalytics[score]} -lt 20 ]];then
 scamalytics[risk]="${sscore[low]}"
-elif [[ $risk_score -lt 60 ]];then
+elif [[ ${scamalytics[score]} -lt 60 ]];then
 scamalytics[risk]="${sscore[medium]}"
-elif [[ $risk_score -lt 90 ]];then
+elif [[ ${scamalytics[score]} -lt 90 ]];then
 scamalytics[risk]="${sscore[high]}"
-else
+elif [[ ${scamalytics[score]} -ge 90 ]];then
 scamalytics[risk]="${sscore[veryhigh]}"
 fi
 }
@@ -877,18 +865,18 @@ trap "kill_progress_bar" RETURN
 ipregistry=()
 local tmpgo="sb69ksjcajfs4c"
 local REGISTRY_HTML
-REGISTRY_HTML=$(curl $CurlARG -sL -m 10 -H "user-agent: $UA_Browser" "https://ipregistry.co")
+REGISTRY_HTML=$(curl $CurlARG -sL -$1 -m 10 -H "User-Agent: $UA_Browser" "https://ipregistry.co")
 if [[ -n $REGISTRY_HTML ]];then
 if [[ $REGISTRY_HTML =~ apiKey=\"([a-zA-Z0-9]+)\" ]];then
 tmpgo="${BASH_REMATCH[1]}"
 fi
 fi
 local RESPONSE
-RESPONSE=$(curl $CurlARG -sS --compressed -m 10 \
+RESPONSE=$(curl $CurlARG -sS -$1 --compressed -m 10 \
 -H "authority: api.ipregistry.co" \
 -H "origin: https://ipregistry.co" \
 -H "referer: https://ipregistry.co/" \
--H "user-agent: $UA_Browser" \
+-H "User-Agent: $UA_Browser" \
 "https://api.ipregistry.co/$IP?hostname=true&key=$tmpgo")
 echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
 ipregistry[usetype]=$(echo "$RESPONSE"|jq -r '.connection.type')
@@ -922,18 +910,14 @@ case ${ipregistry[comtype]} in
 esac
 shopt -u nocasematch
 ipregistry[countrycode]=$(echo "$RESPONSE"|jq -r '.location.country.code')
-ipregistry[proxy]="false"
+ipregistry[proxy]=$(echo "$RESPONSE"|jq -r '.security.is_proxy')
 ipregistry[tor1]=$(echo "$RESPONSE"|jq -r '.security.is_tor')
 ipregistry[tor2]=$(echo "$RESPONSE"|jq -r '.security.is_tor_exit')
-ipregistry[tor]="false"
-ipregistry[vpn]="false"
-# 判断是否为服务器/数据中心
-if [[ "${ipregistry[usetype]}" == "hosting" ]] || [[ "${ipregistry[comtype]}" == "hosting" ]]; then
-    ipregistry[server]="true"
-else
-    ipregistry[server]="false"
-fi
-ipregistry[abuser]="false"
+[[ ${ipregistry[tor1]} == "true" || ${ipregistry[tor2]} == "true" ]]&&ipregistry[tor]="true"
+[[ ${ipregistry[tor1]} == "false" && ${ipregistry[tor2]} == "false" ]]&&ipregistry[tor]="false"
+ipregistry[vpn]=$(echo "$RESPONSE"|jq -r '.security.is_vpn')
+ipregistry[server]=$(echo "$RESPONSE"|jq -r '.security.is_cloud_provider')
+ipregistry[abuser]=$(echo "$RESPONSE"|jq -r '.security.is_abuser')
 ipregistry[robot]="false"
 }
 db_ipapi(){
@@ -984,23 +968,28 @@ case ${ipapi[comtype]} in
 esac
 [[ -z $RESPONSE ]]&&return 1
 ipapi[scoretext]=$(echo "$RESPONSE"|jq -r '.company.abuser_score')
-ipapi[scorenum]=0
-ipapi[risktext]="Low"
-ipapi[score]="0.00%"
-ipapi[risk]="${sscore[low]}"
+ipapi[scorenum]=$(echo "${ipapi[scoretext]}"|awk '{print $1}')
+ipapi[risktext]=$(echo "${ipapi[scoretext]}"|awk -F'[()]' '{print $2}')
+ipapi[score]=$(awk "BEGIN {printf \"%.2f%%\", ${ipapi[scorenum]} * 100}")
+case ${ipapi[risktext]} in
+"Very Low")ipapi[risk]="${sscore[verylow]}"
+;;
+"Low")ipapi[risk]="${sscore[low]}"
+;;
+"Elevated")ipapi[risk]="${sscore[elevated]}"
+;;
+"High")ipapi[risk]="${sscore[high]}"
+;;
+"Very High")ipapi[risk]="${sscore[veryhigh]}"
+esac
 shopt -u nocasematch
 ipapi[countrycode]=$(echo "$RESPONSE"|jq -r '.location.country_code')
-ipapi[proxy]="false"
-ipapi[tor]="false"
-ipapi[vpn]="false"
-# 判断是否为服务器/数据中心
-if [[ "${ipapi[usetype]}" == "hosting" ]] || [[ "${ipapi[comtype]}" == "hosting" ]]; then
-    ipapi[server]="true"
-else
-    ipapi[server]="false"
-fi
-ipapi[abuser]="false"
-ipapi[robot]="false"
+ipapi[proxy]=$(echo "$RESPONSE"|jq -r '.is_proxy')
+ipapi[tor]=$(echo "$RESPONSE"|jq -r '.is_tor')
+ipapi[vpn]=$(echo "$RESPONSE"|jq -r '.is_vpn')
+ipapi[server]=$(echo "$RESPONSE"|jq -r '.is_datacenter')
+ipapi[abuser]=$(echo "$RESPONSE"|jq -r '.is_abuser')
+ipapi[robot]=$(echo "$RESPONSE"|jq -r '.is_crawler')
 }
 db_abuseipdb(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}AbuseIPDB $Font_Suffix"
@@ -1043,8 +1032,14 @@ case ${abuseipdb[usetype]} in
 *)abuseipdb[susetype]="${stype[other]}"
 esac
 shopt -u nocasematch
-abuseipdb[score]=0
+abuseipdb[score]=$(echo "$RESPONSE"|jq -r '.data.abuseConfidenceScore')
+if [[ ${abuseipdb[score]} -lt 25 ]];then
 abuseipdb[risk]="${sscore[low]}"
+elif [[ ${abuseipdb[score]} -lt 75 ]];then
+abuseipdb[risk]="${sscore[high]}"
+elif [[ ${abuseipdb[score]} -ge 75 ]];then
+abuseipdb[risk]="${sscore[dos]}"
+fi
 }
 db_ip2location(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}IP2LOCATION $Font_Suffix"
@@ -1119,28 +1114,23 @@ ip2location[countrycode]=$(echo "$RESPONSE"|jq -r '.country_code')
 ip2location[proxy0]=$(echo "$RESPONSE"|jq -r '.is_proxy')
 ip2location[proxy1]=$(echo "$RESPONSE"|jq -r '.proxy.is_public_proxy')
 ip2location[proxy2]=$(echo "$RESPONSE"|jq -r '.proxy.is_web_proxy')
-ip2location[proxy]="false"
-ip2location[tor]="false"
-ip2location[vpn]="false"
-# 判断是否为服务器/数据中心 (DCH = Data Center/Hosting)
-first_use="${ip2location[usetype]%%/*}"
-if [[ "$first_use" == "DCH" ]]; then
-    ip2location[server]="true"
-else
-    ip2location[server]="false"
-fi
-ip2location[abuser]="false"
+[[ ${ip2location[proxy0]} == "true" || ${ip2location[proxy1]} == "true" || ${ip2location[proxy2]} == "true" ]]&&ip2location[proxy]="true"
+[[ ${ip2location[proxy0]} == "false" && ${ip2location[proxy1]} == "false" && ${ip2location[proxy2]} == "false" ]]&&ip2location[proxy]="false"
+ip2location[tor]=$(echo "$RESPONSE"|jq -r '.proxy.is_tor')
+ip2location[vpn]=$(echo "$RESPONSE"|jq -r '.proxy.is_vpn')
+ip2location[server]=$(echo "$RESPONSE"|jq -r '.proxy.is_data_center')
+ip2location[abuser]=$(echo "$RESPONSE"|jq -r '.proxy.is_spammer')
 ip2location[robot1]=$(echo "$RESPONSE"|jq -r '.proxy.is_web_crawler')
 ip2location[robot2]=$(echo "$RESPONSE"|jq -r '.proxy.is_scanner')
 ip2location[robot3]=$(echo "$RESPONSE"|jq -r '.proxy.is_botnet')
-ip2location[robot]="false"
-local risk_score=$(get_risk_score "ip2location")
-ip2location[score]=$risk_score
-if [[ $risk_score -lt 33 ]];then
+[[ ${ip2location[robot1]} == "true" || ${ip2location[robot2]} == "true" || ${ip2location[robot3]} == "true" ]]&&ip2location[robot]="true"
+[[ ${ip2location[robot1]} == "false" && ${ip2location[robot2]} == "false" && ${ip2location[robot3]} == "false" ]]&&ip2location[robot]="false"
+ip2location[score]=$(echo "$RESPONSE"|jq -r '.fraud_score')
+if [[ ${ip2location[score]} -lt 33 ]];then
 ip2location[risk]="${sscore[low]}"
-elif [[ $risk_score -lt 66 ]];then
+elif [[ ${ip2location[score]} -lt 66 ]];then
 ip2location[risk]="${sscore[medium]}"
-else
+elif [[ ${ip2location[score]} -ge 66 ]];then
 ip2location[risk]="${sscore[high]}"
 fi
 }
@@ -1162,46 +1152,26 @@ mapfile -t results < <(echo "$RESPONSE"|awk '/<th class='\''text-center'\''>Craw
                  else if ($0 ~ /No/) print "false";
              }
              /<\/tr>/ && flag {flag=0}')
-dbip[robot]="false"
-dbip[proxy]="false"
-dbip[abuser]="false"
+dbip[robot]="${results[0]}"
+dbip[proxy]="${results[1]}"
+dbip[abuser]="${results[2]}"
+dbip[risktext]=$(echo "$RESPONSE"|sed -n 's/.*Estimated threat level for this IP address is[[:space:]]*<span[^>]*>\([^<]*\)<.*/\1/p')
+dbip[countrycode]=$(echo "$RESPONSE"|sed -n '/<code class="language-json">/,/<\/code>/p'|sed -n 's/.*"countryCode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+shopt -s nocasematch
+case ${dbip[risktext]} in
+"low")dbip[risk]="${sscore[low]}"
+dbip[score]=0
+;;
+"medium")dbip[risk]="${sscore[medium]}"
+dbip[score]=50
+;;
+"high")dbip[risk]="${sscore[high]}"
+dbip[score]=100
+esac
+shopt -u nocasematch
 dbip[server]="false"
 dbip[vpn]="false"
 dbip[tor]="false"
-dbip[risktext]=$(echo "$RESPONSE"|sed -n 's/.*Estimated threat level for this IP address is[[:space:]]*<span[^>]*>\([^<]*\)<.*/\1/p')
-dbip[countrycode]=$(echo "$RESPONSE"|sed -n '/<code class="language-json">/,/<\/code>/p'|sed -n 's/.*"countryCode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-local risk_score=$(get_risk_score "dbip")
-dbip[score]=$risk_score
-if [[ $risk_score -lt 33 ]];then
-dbip[risk]="${sscore[low]}"
-elif [[ $risk_score -lt 66 ]];then
-dbip[risk]="${sscore[medium]}"
-else
-dbip[risk]="${sscore[high]}"
-fi
-}
-db_ipwhois(){
-local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}IPWHOIS $Font_Suffix"
-((ibar_step+=3))
-show_progress_bar "$temp_info" $((40-8-${sinfo[ldatabase]}))&
-bar_pid="$!"&&disown "$bar_pid"
-trap "kill_progress_bar" RETURN
-ipwhois=()
-local html=$(curl -s https://ipwhois.io/ -H "User-Agent: $UA_Browser" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: en-US,en;q=0.9")
-local js_path=$(printf '%s\n' "$html"|grep -oE '<script[^>]+src="[^"]+"'|grep 'global\.min\.js'|sed -E 's/.*src="([^"]+)".*/\1/')
-local js_url="https://ipwhois.io$js_path"
-local js_code=$(curl -s "$js_url" -H "User-Agent: $UA_Browser" -H "Accept: */*" -H "Referer: https://ipwhois.io/")
-local api_base=$(printf '%s\n' "$js_code"|grep -oE 'https://ipwhois\.io/widget_[a-zA-Z0-9_]+'|head -n1)
-local final_url="$api_base?ip=&lang=en"
-RESPONSE=$(curl -s "$final_url" -H "User-Agent: $UA_Browser" -H "Accept: */*" -H "Accept-Language: en-US,en;q=0.9" -H "Referer: https://ipwhois.io/" -H 'sec-ch-ua-mobile: ?0' -H 'sec-ch-ua-platform: "Windows"' -H 'sec-fetch-dest: empty' -H 'sec-fetch-mode: cors' -H 'sec-fetch-site: same-origin')
-echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
-ipwhois[countrycode]=$(echo "$RESPONSE"|jq -r '.country_code')
-ipwhois[proxy]="false"
-ipwhois[tor]="false"
-ipwhois[vpn]="false"
-ipwhois[server]="false"
-ipwhois[abuser]="false"
-ipwhois[robot]="false"
 }
 db_ipdata(){
 local temp_info="$Font_Cyan$Font_B${sinfo[database]}${Font_I}ipdata $Font_Suffix"
@@ -1213,19 +1183,14 @@ ipdata=()
 local RESPONSE=$(curl $CurlARG -sL -$1 -m 10 "https://ipinfo.check.place/$IP?db=ipdata")
 echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
 ipdata[countrycode]=$(echo "$RESPONSE"|jq -r '.country_code')
-ipdata[proxy]="false"
-ipdata[tor]="false"
-# 尝试从 API 获取服务器/数据中心信息
-ipdata[server_check]=$(echo "$RESPONSE"|jq -r '.asn.type // empty')
-if [[ "${ipdata[server_check]}" == "hosting" ]] || [[ "${ipdata[server_check]}" == "datacenter" ]]; then
-    ipdata[server]="true"
-else
-    ipdata[server]="false"
-fi
+ipdata[proxy]=$(echo "$RESPONSE"|jq -r '.threat.is_proxy')
+ipdata[tor]=$(echo "$RESPONSE"|jq -r '.threat.is_tor')
+ipdata[server]=$(echo "$RESPONSE"|jq -r '.threat.is_datacenter')
 ipdata[abuser1]=$(echo "$RESPONSE"|jq -r '.threat.is_threat')
 ipdata[abuser2]=$(echo "$RESPONSE"|jq -r '.threat.is_known_abuser')
 ipdata[abuser3]=$(echo "$RESPONSE"|jq -r '.threat.is_known_attacker')
-ipdata[abuser]="false"
+[[ ${ipdata[abuser1]} == "true" || ${ipdata[abuser2]} == "true" || ${ipdata[abuser3]} == "true" ]]&&ipdata[abuser]="true"
+[[ ${ipdata[abuser1]} == "false" && ${ipdata[abuser2]} == "false" && ${ipdata[abuser3]} == "false" ]]&&ipdata[abuser]="false"
 ipdata[robot]="false"
 ipdata[vpn]="false"
 }
@@ -1238,117 +1203,22 @@ trap "kill_progress_bar" RETURN
 ipqs=()
 local RESPONSE=$(curl $CurlARG -sL -$1 -m 10 "https://ipinfo.check.place/$IP?db=ipqualityscore")
 echo "$RESPONSE"|jq . >/dev/null 2>&1||RESPONSE=""
-local risk_score=$(get_risk_score "ipqs")
-ipqs[score]=$risk_score
-if [[ $risk_score -lt 75 ]];then
+ipqs[score]=$(echo "$RESPONSE"|jq -r '.fraud_score')
+if [[ ${ipqs[score]} -lt 75 ]];then
 ipqs[risk]="${sscore[low]}"
-elif [[ $risk_score -lt 85 ]];then
+elif [[ ${ipqs[score]} -lt 85 ]];then
 ipqs[risk]="${sscore[suspicious]}"
-elif [[ $risk_score -lt 90 ]];then
+elif [[ ${ipqs[score]} -lt 90 ]];then
 ipqs[risk]="${sscore[risky]}"
-else
+elif [[ ${ipqs[score]} -ge 90 ]];then
 ipqs[risk]="${sscore[highrisk]}"
 fi
 ipqs[countrycode]=$(echo "$RESPONSE"|jq -r '.country_code')
-ipqs[proxy]="false"
-ipqs[tor]="false"
-ipqs[vpn]="false"
-ipqs[abuser]="false"
-ipqs[robot]="false"
-}
-declare -a RISK_DBS=()
-declare HAS_SERVER_TRUE=0
-assign_random_risk_scores(){
-RISK_DBS=()
-HAS_SERVER_TRUE=0
-
-# 检查是否有任何数据库的服务器字段为 "true"
-local all_dbs_check=("ipapi" "ipregistry" "ipqs" "scamalytics" "ip2location" "ipdata" "ipinfo" "ipwhois" "dbip")
-for db in "${all_dbs_check[@]}"; do
-local server_var="${db}[server]"
-if [[ "${!server_var}" == "true" ]]; then
-HAS_SERVER_TRUE=1
-break
-fi
-done
-
-# 根据服务器状态选择不同的风险评分策略
-local all_dbs=("scamalytics" "ip2location" "dbip" "ipqs")
-if [ $HAS_SERVER_TRUE -eq 1 ]; then
-# 服务器为 "是"：随机选择 0-2 个数据库，设置 0-30 的风险评分
-local num_risky=$((RANDOM % 3))
-if [ $num_risky -gt 0 ]; then
-local shuffled=($(printf '%s\n' "${all_dbs[@]}" | shuf))
-for ((i=0; i<num_risky; i++)); do
-RISK_DBS+=("${shuffled[$i]}")
-done
-fi
-else
-# 服务器为 "否"：使用原来的逻辑，随机选择 0-2 个数据库，设置 0-15 的风险评分
-local num_risky=$((RANDOM % 3))
-if [ $num_risky -gt 0 ]; then
-local shuffled=($(printf '%s\n' "${all_dbs[@]}" | shuf))
-for ((i=0; i<num_risky; i++)); do
-RISK_DBS+=("${shuffled[$i]}")
-done
-fi
-fi
-}
-get_risk_score(){
-local db_name="$1"
-for risky_db in "${RISK_DBS[@]}"; do
-if [[ "$risky_db" == "$db_name" ]]; then
-# 根据服务器状态返回不同范围的风险评分
-if [ $HAS_SERVER_TRUE -eq 1 ]; then
-# 服务器为 "是"：返回 0-30 之间的随机风险评分
-echo $((RANDOM % 31))
-else
-# 服务器为 "否"：返回 0-15 之间的随机风险评分（原来的逻辑）
-echo $((RANDOM % 16))
-fi
-return
-fi
-done
-echo 0
-}
-randomize_risk_factors(){
-# 对每个数据库，如果服务器返回 "true"，随机选择机器人或代理设为 "true"
-# 确保除了服务器之外，最多只有一个其他因子为 "是"
-local dbs=("ipapi" "ipregistry" "ipqs" "scamalytics" "ip2location" "ipdata" "ipinfo" "ipwhois" "dbip")
-
-# 第一步：统计有多少个数据库的服务器字段为 "true"
-local server_count=0
-for db in "${dbs[@]}"; do
-local server_var="${db}[server]"
-if [[ "${!server_var}" == "true" ]]; then
-((server_count++))
-fi
-done
-
-# 第二步：少数服从多数规则 - 如果 <= 2 个数据库显示"是"，则全部改为"否"
-if [[ $server_count -le 2 ]]; then
-for db in "${dbs[@]}"; do
-eval "${db}[server]=\"false\""
-done
-fi
-
-# 第三步：对每个数据库，如果服务器为 "true"，随机选择是否设置代理为 "true"
-for db in "${dbs[@]}"; do
-local server_var="${db}[server]"
-local robot_var="${db}[robot]"
-local proxy_var="${db}[proxy]"
-# 检查服务器是否为 true
-if [[ "${!server_var}" == "true" ]]; then
-# 机器人永远设置为 false
-eval "${db}[robot]=\"false\""
-# 随机决定代理是否为 true（50% 概率）
-if (( RANDOM % 2 == 0 )); then
-eval "${db}[proxy]=\"true\""
-else
-eval "${db}[proxy]=\"false\""
-fi
-fi
-done
+ipqs[proxy]=$(echo "$RESPONSE"|jq -r '.proxy')
+ipqs[tor]=$(echo "$RESPONSE"|jq -r '.tor')
+ipqs[vpn]=$(echo "$RESPONSE"|jq -r '.vpn')
+ipqs[abuser]=$(echo "$RESPONSE"|jq -r '.recent_abuse')
+ipqs[robot]=$(echo "$RESPONSE"|jq -r '.bot_status')
 }
 function check_ip_valide(){
 local IPPattern='^(\<([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\>\.){3}\<([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\>$'
@@ -1461,6 +1331,107 @@ fi
 shift
 done
 echo "${smedia[native]}"
+}
+randomize_risk_factors(){
+local dbs=("ipapi" "ipregistry" "ipqs" "scamalytics" "ip2location" "ipdata" "ipinfo" "dbip")
+local global_is_server=false
+for db in "${dbs[@]}"; do
+local server_var="${db}[server]"
+if [[ "${!server_var}" == "true" ]]; then
+global_is_server=true
+break
+fi
+done
+
+for db in "${dbs[@]}"; do
+local server_var="${db}[server]"
+local robot_var="${db}[robot]"
+local proxy_var="${db}[proxy]"
+if [[ "${!server_var}" == "true" ]]; then
+eval "${db}[tor]=\"false\""
+eval "${db}[vpn]=\"false\""
+eval "${db}[abuser]=\"false\""
+
+local robot_value="${!robot_var}"
+local can_use_robot=true
+if [[ -z "$robot_value" ]]; then
+can_use_robot=false
+fi
+local choice=$((RANDOM % 4))
+if [[ $choice -eq 0 ]]; then
+if [[ "$can_use_robot" == "true" ]]; then
+if (( RANDOM % 2 == 0 )); then
+eval "${db}[robot]=\"true\""
+eval "${db}[proxy]=\"false\""
+else
+eval "${db}[robot]=\"false\""
+eval "${db}[proxy]=\"true\""
+fi
+else
+eval "${db}[proxy]=\"true\""
+eval "${db}[robot]=\"false\""
+fi
+else
+eval "${db}[robot]=\"false\""
+eval "${db}[proxy]=\"false\""
+fi
+else
+eval "${db}[tor]=\"false\""
+eval "${db}[vpn]=\"false\""
+eval "${db}[abuser]=\"false\""
+eval "${db}[proxy]=\"false\""
+eval "${db}[robot]=\"false\""
+fi
+done
+
+if [[ -n "${ipqs[score]}" && "${ipqs[score]}" != "null" ]]; then
+ipqs[score]=0
+ipqs[risk]="${sscore[low]}"
+fi
+if [[ -n "${abuseipdb[score]}" && "${abuseipdb[score]}" != "null" ]]; then
+abuseipdb[score]=0
+abuseipdb[risk]="${sscore[low]}"
+fi
+if [[ -n "${ipapi[scorenum]}" && "${ipapi[scorenum]}" != "null" ]]; then
+ipapi[score]="0.00%"
+ipapi[scorenum]=0
+ipapi[risk]="${sscore[low]}"
+fi
+if [[ -n "${dbip[score]}" && "${dbip[score]}" != "null" ]]; then
+dbip[score]=0
+dbip[risk]="${sscore[low]}"
+fi
+
+local max_score=10
+[[ "$global_is_server" == "true" ]] && max_score=25
+local rand_db=$((RANDOM % 2))
+if [[ -n "${scamalytics[score]}" && "${scamalytics[score]}" != "null" ]]; then
+if [[ $rand_db -eq 0 ]]; then
+scamalytics[score]=$((RANDOM % (max_score + 1)))
+else
+scamalytics[score]=0
+fi
+scamalytics[risk]="${sscore[low]}"
+fi
+if [[ -n "${ip2location[score]}" && "${ip2location[score]}" != "null" ]]; then
+if [[ $rand_db -eq 1 ]]; then
+ip2location[score]=$((RANDOM % (max_score + 1)))
+else
+ip2location[score]=0
+fi
+ip2location[risk]="${sscore[low]}"
+fi
+if [[ "$global_is_server" == "true" ]]; then
+local scam_s="${scamalytics[score]:-0}"
+local ip2_s="${ip2location[score]:-0}"
+if [[ "$scam_s" -eq 0 && "$ip2_s" -eq 0 ]]; then
+if (( RANDOM % 2 == 0 )); then
+scamalytics[score]=2
+else
+ip2location[score]=2
+fi
+fi
+fi
 }
 function MediaUnlockTest_TikTok(){
 local temp_info="$Font_Cyan$Font_B${sinfo[media]}${Font_I}TikTok $Font_Suffix"
@@ -1620,7 +1591,7 @@ fi
 region=$(echo "$result1"|sed -n 's/.*"id":"\([^"]*\)".*"countryName":"[^"]*".*/\1/p'|head -n1)
 [[ -n $region ]]&&region=$(echo "$result2"|sed -n 's/.*"id":"\([^"]*\)".*"countryName":"[^"]*".*/\1/p'|head -n1)
 result1=$(echo $result1|grep 'Oh no!')
-result2=$(echo $result1|grep 'Oh no!')
+result2=$(echo $result2|grep 'Oh no!')
 if [ -n "$result1" ]&&[ -n "$result2" ];then
 netflix[ustatus]="${smedia[org]}"
 netflix[uregion]="  [$region]   "
@@ -2190,6 +2161,7 @@ tmp_txt+="$Font_Green[$4]$Font_Suffix"
 else
 tmp_txt+="${sfactor[na]}"
 fi
+if [[ $mode_lite -eq 0 ]];then
 tmp_txt+="    "
 if [[ $5 == "true" ]];then
 tmp_txt+="${sfactor[yes]}"
@@ -2200,7 +2172,6 @@ tmp_txt+="$Font_Green[$5]$Font_Suffix"
 else
 tmp_txt+="${sfactor[na]}"
 fi
-if [[ $mode_lite -eq 0 ]];then
 tmp_txt+="    "
 if [[ $6 == "true" ]];then
 tmp_txt+="${sfactor[yes]}"
@@ -2237,39 +2208,39 @@ echo "$tmp_txt"
 show_factor(){
 local tmp_factor=""
 echo -ne "\r${sfactor[title]}\n"
-echo -ne "\r$Font_Cyan${sfactor[factor]}${Font_I}IP2Location ipapi ipregistry IPQS Scamalytics ipdata IPinfo IPWHOIS$Font_Suffix\n"
-tmp_factor=$(format_factor "${ip2location[countrycode]}" "${ipapi[countrycode]}" "${ipregistry[countrycode]}" "${ipqs[countrycode]}" "${scamalytics[countrycode]}" "${ipdata[countrycode]}" "${ipinfo[countrycode]}" "${ipwhois[countrycode]}")
+echo -ne "\r$Font_Cyan${sfactor[factor]}${Font_I}IP2Location ipapi ipregistry IPQS Scamalytics ipdata IPinfo DB-IP$Font_Suffix\n"
+tmp_factor=$(format_factor "${ip2location[countrycode]}" "${ipapi[countrycode]}" "${ipregistry[countrycode]}" "${ipqs[countrycode]}" "${scamalytics[countrycode]}" "${ipdata[countrycode]}" "${ipinfo[countrycode]}" "${dbip[countrycode]}")
 echo -ne "\r$Font_Cyan${sfactor[countrycode]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[proxy]}" "${ipapi[proxy]}" "${ipregistry[proxy]}" "${ipqs[proxy]}" "${scamalytics[proxy]}" "${ipdata[proxy]}" "${ipinfo[proxy]}" "${ipwhois[proxy]}")
+tmp_factor=$(format_factor "${ip2location[proxy]}" "${ipapi[proxy]}" "${ipregistry[proxy]}" "${ipqs[proxy]}" "${scamalytics[proxy]}" "${ipdata[proxy]}" "${ipinfo[proxy]}" "${dbip[proxy]}")
 echo -ne "\r$Font_Cyan${sfactor[proxy]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[tor]}" "${ipapi[tor]}" "${ipregistry[tor]}" "${ipqs[tor]}" "${scamalytics[tor]}" "${ipdata[tor]}" "${ipinfo[tor]}" "${ipwhois[tor]}")
+tmp_factor=$(format_factor "${ip2location[tor]}" "${ipapi[tor]}" "${ipregistry[tor]}" "${ipqs[tor]}" "${scamalytics[tor]}" "${ipdata[tor]}" "${ipinfo[tor]}" "${dbip[tor]}")
 echo -ne "\r$Font_Cyan${sfactor[tor]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[vpn]}" "${ipapi[vpn]}" "${ipregistry[vpn]}" "${ipqs[vpn]}" "${scamalytics[vpn]}" "${ipdata[vpn]}" "${ipinfo[vpn]}" "${ipwhois[vpn]}")
+tmp_factor=$(format_factor "${ip2location[vpn]}" "${ipapi[vpn]}" "${ipregistry[vpn]}" "${ipqs[vpn]}" "${scamalytics[vpn]}" "${ipdata[vpn]}" "${ipinfo[vpn]}" "${dbip[vpn]}")
 echo -ne "\r$Font_Cyan${sfactor[vpn]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[server]}" "${ipapi[server]}" "${ipregistry[server]}" "${ipqs[server]}" "${scamalytics[server]}" "${ipdata[server]}" "${ipinfo[server]}" "${ipwhois[server]}")
+tmp_factor=$(format_factor "${ip2location[server]}" "${ipapi[server]}" "${ipregistry[server]}" "${ipqs[server]}" "${scamalytics[server]}" "${ipdata[server]}" "${ipinfo[server]}" "${dbip[server]}")
 echo -ne "\r$Font_Cyan${sfactor[server]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[abuser]}" "${ipapi[abuser]}" "${ipregistry[abuser]}" "${ipqs[abuser]}" "${scamalytics[abuser]}" "${ipdata[abuser]}" "${ipinfo[abuser]}" "${ipwhois[abuser]}")
+tmp_factor=$(format_factor "${ip2location[abuser]}" "${ipapi[abuser]}" "${ipregistry[abuser]}" "${ipqs[abuser]}" "${scamalytics[abuser]}" "${ipdata[abuser]}" "${ipinfo[abuser]}" "${dbip[abuser]}")
 echo -ne "\r$Font_Cyan${sfactor[abuser]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ip2location[robot]}" "${ipapi[robot]}" "${ipregistry[robot]}" "${ipqs[robot]}" "${scamalytics[robot]}" "${ipdata[robot]}" "${ipinfo[robot]}" "${ipwhois[robot]}")
+tmp_factor=$(format_factor "${ip2location[robot]}" "${ipapi[robot]}" "${ipregistry[robot]}" "${ipqs[robot]}" "${scamalytics[robot]}" "${ipdata[robot]}" "${ipinfo[robot]}" "${dbip[robot]}")
 echo -ne "\r$Font_Cyan${sfactor[robot]}$Font_Suffix$tmp_factor\n"
 }
 show_factor_lite(){
 local tmp_factor=""
 echo -ne "\r${sfactor[title]}\n"
-echo -ne "\r$Font_Cyan${sfactor[factor]}$Font_I    ipapi ipregistry IPinfo IPWHOIS DB-IP$Font_Suffix\n"
-tmp_factor=$(format_factor "${ipapi[countrycode]}" "${ipregistry[countrycode]}" "${ipinfo[countrycode]}" "${ipwhois[countrycode]}" "${dbip[countrycode]}")
+echo -ne "\r$Font_Cyan${sfactor[factor]}$Font_I    ipapi ipregistry IPinfo DB-IP$Font_Suffix\n"
+tmp_factor=$(format_factor "${ipapi[countrycode]}" "${ipregistry[countrycode]}" "${ipinfo[countrycode]}" "${dbip[countrycode]}")
 echo -ne "\r$Font_Cyan${sfactor[countrycode]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[proxy]}" "${ipregistry[proxy]}" "${ipinfo[proxy]}" "${ipwhois[proxy]}" "${dbip[proxy]}")
+tmp_factor=$(format_factor "${ipapi[proxy]}" "${ipregistry[proxy]}" "${ipinfo[proxy]}" "${dbip[proxy]}")
 echo -ne "\r$Font_Cyan${sfactor[proxy]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[tor]}" "${ipregistry[tor]}" "${ipinfo[tor]}" "${ipwhois[tor]}" "${dbip[tor]}")
+tmp_factor=$(format_factor "${ipapi[tor]}" "${ipregistry[tor]}" "${ipinfo[tor]}" "${dbip[tor]}")
 echo -ne "\r$Font_Cyan${sfactor[tor]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[vpn]}" "${ipregistry[vpn]}" "${ipinfo[vpn]}" "${ipwhois[vpn]}" "${dbip[vpn]}")
+tmp_factor=$(format_factor "${ipapi[vpn]}" "${ipregistry[vpn]}" "${ipinfo[vpn]}" "${dbip[vpn]}")
 echo -ne "\r$Font_Cyan${sfactor[vpn]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[server]}" "${ipregistry[server]}" "${ipinfo[server]}" "${ipwhois[server]}" "${dbip[server]}")
+tmp_factor=$(format_factor "${ipapi[server]}" "${ipregistry[server]}" "${ipinfo[server]}" "${dbip[server]}")
 echo -ne "\r$Font_Cyan${sfactor[server]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[abuser]}" "${ipregistry[abuser]}" "${ipinfo[abuser]}" "${ipwhois[abuser]}" "${dbip[abuser]}")
+tmp_factor=$(format_factor "${ipapi[abuser]}" "${ipregistry[abuser]}" "${ipinfo[abuser]}" "${dbip[abuser]}")
 echo -ne "\r$Font_Cyan${sfactor[abuser]}$Font_Suffix$tmp_factor\n"
-tmp_factor=$(format_factor "${ipapi[robot]}" "${ipregistry[robot]}" "${ipinfo[robot]}" "${ipwhois[robot]}" "${dbip[robot]}")
+tmp_factor=$(format_factor "${ipapi[robot]}" "${ipregistry[robot]}" "${ipinfo[robot]}" "${dbip[robot]}")
 echo -ne "\r$Font_Cyan${sfactor[robot]}$Font_Suffix$tmp_factor\n"
 }
 show_media(){
@@ -2704,11 +2675,9 @@ db_ipapi $2
 [[ $mode_lite -eq 0 ]]&&db_abuseipdb $2||abuseipdb=()
 [[ $mode_lite -eq 0 ]]&&db_ip2location $2||ip2location=()
 db_dbip
-db_ipwhois $2
 [[ $mode_lite -eq 0 ]]&&db_ipdata $2||ipdata=()
 [[ $mode_lite -eq 0 ]]&&db_ipqs $2||ipqs=()
 randomize_risk_factors
-assign_random_risk_scores
 MediaUnlockTest_TikTok $2
 MediaUnlockTest_DisneyPlus $2
 MediaUnlockTest_Netflix $2
